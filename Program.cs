@@ -13,6 +13,42 @@ builder.Services.AddSingleton<MySqlConnectionFactory>();
 
 var app = builder.Build();
 
+// ==========================================================
+// API KEY
+// ==========================================================
+
+// Lê do appsettings.json a API Key considerada correta.
+var apiKeyCorreta = builder.Configuration["ApiKey"];
+
+// MIDDLEWARE DE VALIDAÇÃO DA API KEY
+// Tudo que começar com /api será protegido.
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/api"))
+    {
+        // Lê a API Key enviada no Header HTTP.
+        var apiKeyRecebida =
+            context.Request.Headers["X-API-Key"].FirstOrDefault();
+
+        // Se não existir ou estiver incorreta, bloqueia a requisição.
+        if (string.IsNullOrEmpty(apiKeyRecebida) ||
+            apiKeyRecebida != apiKeyCorreta)
+        {
+            context.Response.StatusCode =
+                StatusCodes.Status401Unauthorized;
+
+            await context.Response.WriteAsync(
+                "401 Unauthorized - API Key ausente ou incorreta."
+            );
+
+            return;
+        }
+    }
+    
+    // Se a chave estiver correta, a requisição continua.
+    await next();
+});
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
